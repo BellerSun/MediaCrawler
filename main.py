@@ -65,16 +65,22 @@ async def main():
     await crawler.start()
 
 
-def cleanup():
+async def cleanup():
     if crawler:
-        # asyncio.run(crawler.close())
-        pass
+        await crawler.close()
     if config.SAVE_DATA_OPTION in ["db", "sqlite"]:
-        asyncio.run(db.close())
+        await db.close()
 
 
 if __name__ == "__main__":
     try:
         asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        print("程序被用户中断")
+    except Exception as e:
+        print(f"程序运行出错: {e}")
     finally:
-        cleanup()
+        try:
+            asyncio.get_event_loop().run_until_complete(cleanup())
+        except Exception as e:
+            print(f"清理资源时出错: {e}")

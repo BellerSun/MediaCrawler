@@ -24,6 +24,13 @@ class AbstractCrawler(ABC):
         pass
 
     @abstractmethod
+    async def close(self):
+        """
+        close crawler and cleanup resources
+        """
+        pass
+
+    @abstractmethod
     async def search(self):
         """
         search

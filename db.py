@@ -87,10 +87,13 @@ async def close():
         utils.logger.info("[close] sqlite db connection will be closed automatically")
     else:
         # MySQL连接池关闭
-        db_pool: aiomysql.Pool = db_conn_pool_var.get()
-        if db_pool is not None:
-            db_pool.close()
-            utils.logger.info("[close] mysql db pool closed")
+        try:
+            db_pool: aiomysql.Pool = db_conn_pool_var.get()
+            if db_pool is not None:
+                db_pool.close()
+                utils.logger.info("[close] mysql db pool closed")
+        except LookupError:
+            utils.logger.warning("[close] db connection pool context var not found, may already be cleaned up")
 
 
 async def init_table_schema(db_type: str = None):

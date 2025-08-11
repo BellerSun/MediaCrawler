@@ -41,8 +41,24 @@ class ExpiringLocalCache(AbstractCache):
         析构函数，清理定时任务
         :return:
         """
-        if self._cron_task is not None:
+        self._cleanup_task()
+
+    def _cleanup_task(self):
+        """
+        清理定时任务
+        :return:
+        """
+        if self._cron_task is not None and not self._cron_task.cancelled():
             self._cron_task.cancel()
+            self._cron_task = None
+
+    async def close(self):
+        """
+        异步关闭缓存，清理资源
+        :return:
+        """
+        self._cleanup_task()
+        self._cache_container.clear()
 
     def get(self, key: str) -> Optional[Any]:
         """
@@ -114,9 +130,13 @@ class ExpiringLocalCache(AbstractCache):
         开启定时清理任务
         :return:
         """
-        while True:
-            self._clear()
-            await asyncio.sleep(self._cron_interval)
+        try:
+            while True:
+                self._clear()
+                await asyncio.sleep(self._cron_interval)
+        except asyncio.CancelledError:
+            # 任务被取消时优雅退出
+            pass
 
 
 if __name__ == '__main__':
