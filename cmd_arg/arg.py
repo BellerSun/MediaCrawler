@@ -40,6 +40,14 @@ async def parse_cmd():
                         choices=['csv', 'db', 'json', 'sqlite'], default=config.SAVE_DATA_OPTION)
     parser.add_argument('--cookies', type=str,
                         help='Cookies used for cookie login type / Cookie登录方式使用的Cookie值', default=config.COOKIES)
+    
+    # CDP相关参数
+    parser.add_argument('--enable_cdp_mode', type=str2bool,
+                        help='''Whether to enable CDP mode / 是否启用CDP模式, supported values case insensitive / 支持的值(不区分大小写) ('yes', 'true', 't', 'y', '1', 'no', 'false', 'f', 'n', '0')''', default=config.ENABLE_CDP_MODE)
+    parser.add_argument('--cdp_remote_host', type=str,
+                        help='CDP remote host address / CDP远程主机地址', default=config.CDP_REMOTE_HOST)
+    parser.add_argument('--cdp_debug_port', type=int,
+                        help='CDP debug port / CDP调试端口', default=config.CDP_DEBUG_PORT)
 
     args = parser.parse_args()
 
@@ -53,3 +61,8 @@ async def parse_cmd():
     config.ENABLE_GET_SUB_COMMENTS = args.get_sub_comment
     config.SAVE_DATA_OPTION = args.save_data_option
     config.COOKIES = args.cookies
+    
+    # 覆盖CDP相关配置
+    config.ENABLE_CDP_MODE = args.enable_cdp_mode
+    config.CDP_REMOTE_HOST = args.cdp_remote_host
+    config.CDP_DEBUG_PORT = args.cdp_debug_port

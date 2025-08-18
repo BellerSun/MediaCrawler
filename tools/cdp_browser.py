@@ -43,14 +43,23 @@ class CDPBrowserManager:
         启动浏览器并通过CDP连接
         """
         try:
-            # 1. 检测浏览器路径
-            browser_path = await self._get_browser_path()
+            # 检查是否为远程连接模式
+            is_remote = hasattr(config, 'CDP_REMOTE_HOST') and config.CDP_REMOTE_HOST
+            
+            if is_remote:
+                utils.logger.info(f"[CDPBrowserManager] 远程模式：连接到 {config.CDP_REMOTE_HOST}:{config.CDP_DEBUG_PORT}")
+                # 远程模式：直接使用配置的端口，不启动本地浏览器
+                self.debug_port = config.CDP_DEBUG_PORT
+            else:
+                utils.logger.info("[CDPBrowserManager] 本地模式：启动本地浏览器")
+                # 1. 检测浏览器路径
+                browser_path = await self._get_browser_path()
 
-            # 2. 获取可用端口
-            self.debug_port = self.launcher.find_available_port(config.CDP_DEBUG_PORT)
+                # 2. 获取可用端口
+                self.debug_port = self.launcher.find_available_port(config.CDP_DEBUG_PORT)
 
-            # 3. 启动浏览器
-            await self._launch_browser(browser_path, headless)
+                # 3. 启动浏览器
+                await self._launch_browser(browser_path, headless)
 
             # 4. 通过CDP连接
             await self._connect_via_cdp(playwright)
@@ -103,18 +112,21 @@ class CDPBrowserManager:
         测试CDP连接是否可用
         """
         try:
+            # 支持远程主机连接
+            host = config.CDP_REMOTE_HOST if hasattr(config, 'CDP_REMOTE_HOST') and config.CDP_REMOTE_HOST else 'localhost'
+            
             # 简单的socket连接测试
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(5)
-                result = s.connect_ex(("localhost", debug_port))
+                result = s.connect_ex((host, debug_port))
                 if result == 0:
                     utils.logger.info(
-                        f"[CDPBrowserManager] CDP端口 {debug_port} 可访问"
+                        f"[CDPBrowserManager] CDP端口 {debug_port} 在 {host} 上可访问"
                     )
                     return True
                 else:
                     utils.logger.warning(
-                        f"[CDPBrowserManager] CDP端口 {debug_port} 不可访问"
+                        f"[CDPBrowserManager] CDP端口 {debug_port} 在 {host} 上不可访问"
                     )
                     return False
         except Exception as e:
@@ -164,9 +176,12 @@ class CDPBrowserManager:
         获取浏览器的WebSocket连接URL
         """
         try:
+            # 支持远程主机连接
+            host = config.CDP_REMOTE_HOST if hasattr(config, 'CDP_REMOTE_HOST') and config.CDP_REMOTE_HOST else 'localhost'
+            
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"http://localhost:{debug_port}/json/version", timeout=10
+                    f"http://{host}:{debug_port}/json/version", timeout=10
                 )
                 if response.status_code == 200:
                     data = response.json()

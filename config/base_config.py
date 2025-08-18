@@ -44,6 +44,10 @@ ENABLE_CDP_MODE = False
 # 如果端口被占用，系统会自动尝试下一个可用端口
 CDP_DEBUG_PORT = 9222
 
+# CDP远程主机地址（留空表示本地连接）
+# 例如：CDP_REMOTE_HOST = "192.168.1.100"
+CDP_REMOTE_HOST = ""
+
 # 自定义浏览器路径（可选）
 # 如果为空，系统会自动检测Chrome/Edge的安装路径
 # Windows示例: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
