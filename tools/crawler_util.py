@@ -24,6 +24,7 @@ from io import BytesIO
 from typing import Dict, List, Optional, Tuple, cast
 
 import httpx
+import numpy as np
 from PIL import Image, ImageDraw, ImageShow
 from playwright.async_api import Cookie, Page
 
@@ -75,6 +76,116 @@ async def find_qrcode_img_from_canvas(page: Page, canvas_selector: str) -> str:
     return base64_image
 
 
+def print_qrcode_to_console(image):
+    """将二维码解析后重新生成ASCII字符打印到控制台"""
+    try:
+        # 方法1：尝试用OpenCV解析二维码内容
+        content = None
+        try:
+            import cv2
+            import numpy as np
+            
+            # 将PIL图像转换为OpenCV格式
+            cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            detector = cv2.QRCodeDetector()
+            retval, decoded_info, points, straight_qrcode = detector.detectAndDecodeMulti(cv_image)
+            
+            if retval and decoded_info:
+                for info in decoded_info:
+                    if info:
+                        content = info
+                        utils.logger.info(f"二维码解析成功，内容: {content}")
+                        break
+        except Exception as e:
+            utils.logger.info(f"OpenCV解析失败: {e}")
+        
+        # 如果解析成功，用qrcode库重新生成ASCII二维码
+        if content:
+            try:
+                import qrcode
+                
+                # 方法1：单字符█（紧凑）
+                utils.logger.info("\n" + "="*80)
+                utils.logger.info("方法1：单字符█（更紧凑）")
+                utils.logger.info("="*80)
+                
+                qr1 = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=1, border=2)
+                qr1.add_data(content)
+                qr1.make(fit=True)
+                
+                matrix1 = qr1.get_matrix()
+                for row in matrix1:
+                    line = ""
+                    for cell in row:
+                        line += "█" if cell else " "
+                    utils.logger.info(line)
+                
+                # 方法2：双字符██（推荐）
+                utils.logger.info("\n" + "="*80)
+                utils.logger.info("方法2：双字符██（推荐，最清晰）")
+                utils.logger.info("="*80)
+                
+                for row in matrix1:
+                    line = ""
+                    for cell in row:
+                        line += "██" if cell else "  "
+                    utils.logger.info(line)
+                
+                # 方法3：qrcode内置ASCII
+                utils.logger.info("\n" + "="*80)
+                utils.logger.info("方法3：qrcode内置ASCII（紧凑）")
+                utils.logger.info("="*80)
+                
+                qr3 = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=1, border=1)
+                qr3.add_data(content)
+                qr3.make(fit=True)
+                
+                # 捕获print_ascii输出
+                import io
+                import sys
+                old_stdout = sys.stdout
+                sys.stdout = captured_output = io.StringIO()
+                try:
+                    qr3.print_ascii(out=sys.stdout, tty=False, invert=True)
+                    ascii_output = captured_output.getvalue()
+                    for line in ascii_output.strip().split('\n'):
+                        utils.logger.info(line)
+                finally:
+                    sys.stdout = old_stdout
+                
+                utils.logger.info("="*80)
+                utils.logger.info("请选择能成功扫描的版本使用 ^_^")
+                utils.logger.info("="*80)
+                
+                return  # 成功生成，直接返回
+                
+            except Exception as e:
+                utils.logger.info(f"qrcode库生成失败: {e}")
+    
+    except Exception as e:
+        utils.logger.info(f"解析二维码时出错: {e}")
+    
+    # 如果上述方法都失败，使用原始的图像处理方法作为备选
+    utils.logger.info("使用备选方法显示二维码...")
+    bw_image = image.convert('1', dither=Image.NONE)
+    width, height = bw_image.size
+    target_size = min(70, min(width, height))
+    resized_image = bw_image.resize((target_size, target_size), Image.NEAREST)
+    
+    utils.logger.info("="*80)
+    utils.logger.info("二维码ASCII显示（备选方法）：")
+    utils.logger.info("="*80)
+    
+    for y in range(target_size):
+        line = ""
+        for x in range(target_size):
+            pixel = resized_image.getpixel((x, y))
+            line += "██" if pixel == 0 else "  "
+        utils.logger.info(line)
+    
+    utils.logger.info("="*80)
+
+
 def show_qrcode(qr_code) -> None:  # type: ignore
     """parse base64 encode qrcode image and show it"""
     if "," in qr_code:
@@ -88,6 +199,10 @@ def show_qrcode(qr_code) -> None:  # type: ignore
     new_image.paste(image, (10, 10))
     draw = ImageDraw.Draw(new_image)
     draw.rectangle((0, 0, width + 19, height + 19), outline=(0, 0, 0), width=1)
+    
+    # 打印ASCII二维码到日志
+    print_qrcode_to_console(new_image)
+    
     del ImageShow.UnixViewer.options["save_all"]
     new_image.show()
 
