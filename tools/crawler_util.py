@@ -114,22 +114,30 @@ def print_qrcode_to_console(image):
                 qr1.make(fit=True)
                 
                 matrix1 = qr1.get_matrix()
+                qr1_lines = []
                 for row in matrix1:
                     line = ""
                     for cell in row:
                         line += "█" if cell else " "
-                    utils.logger.info(line)
+                    qr1_lines.append(line)
+                
+                # 一次性打印整个二维码
+                utils.logger.info("\n" + "\n".join(qr1_lines))
                 
                 # 方法2：双字符██（推荐）
                 utils.logger.info("\n" + "="*80)
                 utils.logger.info("方法2：双字符██（推荐，最清晰）")
                 utils.logger.info("="*80)
                 
+                qr2_lines = []
                 for row in matrix1:
                     line = ""
                     for cell in row:
                         line += "██" if cell else "  "
-                    utils.logger.info(line)
+                    qr2_lines.append(line)
+                
+                # 一次性打印整个二维码
+                utils.logger.info("\n" + "\n".join(qr2_lines))
                 
                 # 方法3：qrcode内置ASCII
                 utils.logger.info("\n" + "="*80)
@@ -140,7 +148,7 @@ def print_qrcode_to_console(image):
                 qr3.add_data(content)
                 qr3.make(fit=True)
                 
-                # 捕获print_ascii输出
+                # 捕获print_ascii输出并一次性打印
                 import io
                 import sys
                 old_stdout = sys.stdout
@@ -148,8 +156,7 @@ def print_qrcode_to_console(image):
                 try:
                     qr3.print_ascii(out=sys.stdout, tty=False, invert=True)
                     ascii_output = captured_output.getvalue()
-                    for line in ascii_output.strip().split('\n'):
-                        utils.logger.info(line)
+                    utils.logger.info("\n" + ascii_output.strip())
                 finally:
                     sys.stdout = old_stdout
                 
@@ -176,13 +183,16 @@ def print_qrcode_to_console(image):
     utils.logger.info("二维码ASCII显示（备选方法）：")
     utils.logger.info("="*80)
     
+    backup_lines = []
     for y in range(target_size):
         line = ""
         for x in range(target_size):
             pixel = resized_image.getpixel((x, y))
             line += "██" if pixel == 0 else "  "
-        utils.logger.info(line)
+        backup_lines.append(line)
     
+    # 一次性打印整个备选二维码
+    utils.logger.info("\n" + "\n".join(backup_lines))
     utils.logger.info("="*80)
 
 
