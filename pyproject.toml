@@ -29,6 +29,7 @@ dependencies = [
     "tenacity==8.2.2",
     "uvicorn==0.29.0",
     "wordcloud==1.9.3",
+    "psutil==5.9.8",
 ]
 
 [[tool.uv.index]]
