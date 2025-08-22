@@ -78,9 +78,23 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("程序被用户中断")
     except Exception as e:
-        print(f"程序运行出错: {e}")
+        error_message = str(e)
+        print(f"程序运行出错: {error_message}")
+        
+        # 提供特定错误的解决方案提示
+        if "Target page, context or browser has been closed" in error_message:
+            print("\n解决方案:")
+            print("1. 运行: python fix_browser_issue.py")
+            print("2. 或者手动清理浏览器数据目录: rm -rf browser_data/ks_user_data_dir")
+            print("3. 然后重新运行程序")
+        elif "browser_context" in error_message and "attribute" in error_message:
+            print("\n解决方案:")
+            print("1. 这可能是浏览器初始化失败导致的")
+            print("2. 运行: python fix_browser_issue.py")
+            print("3. 检查系统资源是否充足（内存、磁盘空间）")
     finally:
         try:
             asyncio.get_event_loop().run_until_complete(cleanup())
         except Exception as e:
             print(f"清理资源时出错: {e}")
+        print("进程退出，退出码: -1")

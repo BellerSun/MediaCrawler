@@ -59,57 +59,74 @@ class KuaishouCrawler(AbstractCrawler):
                 ip_proxy_info
             )
 
-        async with async_playwright() as playwright:
-            # 根据配置选择启动模式
-            if config.ENABLE_CDP_MODE:
-                utils.logger.info("[KuaishouCrawler] 使用CDP模式启动浏览器")
-                self.browser_context = await self.launch_browser_with_cdp(
-                    playwright,
-                    playwright_proxy_format,
-                    self.user_agent,
-                    headless=config.CDP_HEADLESS,
-                )
-            else:
-                utils.logger.info("[KuaishouCrawler] 使用标准模式启动浏览器")
-                # Launch a browser context.
-                chromium = playwright.chromium
-                self.browser_context = await self.launch_browser(
-                    chromium, None, self.user_agent, headless=config.HEADLESS
-                )
-            # stealth.min.js is a js script to prevent the website from detecting the crawler.
-            await self.browser_context.add_init_script(path="libs/stealth.min.js")
-            self.context_page = await self.browser_context.new_page()
-            await self.context_page.goto(f"{self.index_url}?isHome=1")
+        try:
+            async with async_playwright() as playwright:
+                # 根据配置选择启动模式
+                try:
+                    if config.ENABLE_CDP_MODE:
+                        utils.logger.info("[KuaishouCrawler] 使用CDP模式启动浏览器")
+                        self.browser_context = await self.launch_browser_with_cdp(
+                            playwright,
+                            playwright_proxy_format,
+                            self.user_agent,
+                            headless=config.CDP_HEADLESS,
+                        )
+                    else:
+                        utils.logger.info("[KuaishouCrawler] 使用标准模式启动浏览器")
+                        # Launch a browser context.
+                        chromium = playwright.chromium
+                        self.browser_context = await self.launch_browser(
+                            chromium, None, self.user_agent, headless=config.HEADLESS
+                        )
+                except Exception as e:
+                    utils.logger.error(f"[KuaishouCrawler] 浏览器启动失败: {e}")
+                    utils.logger.info("[KuaishouCrawler] 提示：如果出现 'Target page, context or browser has been closed' 错误，")
+                    utils.logger.info("[KuaishouCrawler] 请运行 'python fix_browser_issue.py' 清理浏览器数据后重试")
+                    raise
+                
+                # stealth.min.js is a js script to prevent the website from detecting the crawler.
+                await self.browser_context.add_init_script(path="libs/stealth.min.js")
+                self.context_page = await self.browser_context.new_page()
+                await self.context_page.goto(f"{self.index_url}?isHome=1")
 
-            # Create a client to interact with the kuaishou website.
-            self.ks_client = await self.create_ks_client(httpx_proxy_format)
-            if not await self.ks_client.pong():
-                login_obj = KuaishouLogin(
-                    login_type=config.LOGIN_TYPE,
-                    login_phone=httpx_proxy_format,
-                    browser_context=self.browser_context,
-                    context_page=self.context_page,
-                    cookie_str=config.COOKIES,
-                )
-                await login_obj.begin()
-                await self.ks_client.update_cookies(
-                    browser_context=self.browser_context
-                )
+                # Create a client to interact with the kuaishou website.
+                self.ks_client = await self.create_ks_client(httpx_proxy_format)
+                if not await self.ks_client.pong():
+                    login_obj = KuaishouLogin(
+                        login_type=config.LOGIN_TYPE,
+                        login_phone=httpx_proxy_format,
+                        browser_context=self.browser_context,
+                        context_page=self.context_page,
+                        cookie_str=config.COOKIES,
+                    )
+                    await login_obj.begin()
+                    await self.ks_client.update_cookies(
+                        browser_context=self.browser_context
+                    )
 
-            crawler_type_var.set(config.CRAWLER_TYPE)
-            if config.CRAWLER_TYPE == "search":
-                # Search for videos and retrieve their comment information.
-                await self.search()
-            elif config.CRAWLER_TYPE == "detail":
-                # Get the information and comments of the specified post
-                await self.get_specified_videos()
-            elif config.CRAWLER_TYPE == "creator":
-                # Get creator's information and their videos and comments
-                await self.get_creators_and_videos()
-            else:
-                pass
+                crawler_type_var.set(config.CRAWLER_TYPE)
+                if config.CRAWLER_TYPE == "search":
+                    # Search for videos and retrieve their comment information.
+                    await self.search()
+                elif config.CRAWLER_TYPE == "detail":
+                    # Get the information and comments of the specified post
+                    await self.get_specified_videos()
+                elif config.CRAWLER_TYPE == "creator":
+                    # Get creator's information and their videos and comments
+                    await self.get_creators_and_videos()
+                else:
+                    pass
 
-            utils.logger.info("[KuaishouCrawler.start] Kuaishou Crawler finished ...")
+                utils.logger.info("[KuaishouCrawler.start] Kuaishou Crawler finished ...")
+        except Exception as e:
+            utils.logger.error(f"[KuaishouCrawler.start] 爬虫运行出现错误: {e}")
+            # 尝试清理资源
+            try:
+                if hasattr(self, 'browser_context') and self.browser_context:
+                    await self.close()
+            except Exception as close_error:
+                utils.logger.warning(f"[KuaishouCrawler.start] 资源清理失败: {close_error}")
+            raise
 
     async def search(self):
         utils.logger.info("[KuaishouCrawler.search] Begin search kuaishou keywords")
@@ -387,10 +404,19 @@ class KuaishouCrawler(AbstractCrawler):
 
     async def close(self):
         """Close browser context"""
-        # 如果使用CDP模式，需要特殊处理
-        if self.cdp_manager:
-            await self.cdp_manager.cleanup()
-            self.cdp_manager = None
-        else:
-            await self.browser_context.close()
-        utils.logger.info("[KuaishouCrawler.close] Browser context closed ...")
+        try:
+            # 如果使用CDP模式，需要特殊处理
+            if hasattr(self, 'cdp_manager') and self.cdp_manager:
+                await self.cdp_manager.cleanup()
+                self.cdp_manager = None
+            elif hasattr(self, 'browser_context') and self.browser_context:
+                await self.browser_context.close()
+            utils.logger.info("[KuaishouCrawler.close] Browser context closed ...")
+        except Exception as e:
+            utils.logger.error(f"[KuaishouCrawler.close] Error during close: {e}")
+            # 尝试强制清理
+            try:
+                if hasattr(self, 'browser_context') and self.browser_context:
+                    await self.browser_context.close()
+            except Exception as close_error:
+                utils.logger.warning(f"[KuaishouCrawler.close] Force close also failed: {close_error}")
