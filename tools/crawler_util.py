@@ -104,42 +104,7 @@ def print_qrcode_to_console(image):
             try:
                 import qrcode
                 
-                # 方法1：单字符█（紧凑）
-                utils.logger.info("\n" + "="*80)
-                utils.logger.info("方法1：单字符█（更紧凑）")
-                utils.logger.info("="*80)
-                
-                qr1 = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=1, border=2)
-                qr1.add_data(content)
-                qr1.make(fit=True)
-                
-                matrix1 = qr1.get_matrix()
-                qr1_lines = []
-                for row in matrix1:
-                    line = ""
-                    for cell in row:
-                        line += "█" if cell else " "
-                    qr1_lines.append(line)
-                
-                # 一次性打印整个二维码
-                utils.logger.info("\n" + "\n".join(qr1_lines))
-                
-                # 方法2：双字符██（推荐）
-                utils.logger.info("\n" + "="*80)
-                utils.logger.info("方法2：双字符██（推荐，最清晰）")
-                utils.logger.info("="*80)
-                
-                qr2_lines = []
-                for row in matrix1:
-                    line = ""
-                    for cell in row:
-                        line += "██" if cell else "  "
-                    qr2_lines.append(line)
-                
-                # 一次性打印整个二维码
-                utils.logger.info("\n" + "\n".join(qr2_lines))
-                
-                # 方法3：qrcode内置ASCII
+                # 方法3：qrcode内置ASCII（紧凑）
                 utils.logger.info("\n" + "="*80)
                 utils.logger.info("方法3：qrcode内置ASCII（紧凑）")
                 utils.logger.info("="*80)
@@ -160,8 +125,6 @@ def print_qrcode_to_console(image):
                 finally:
                     sys.stdout = old_stdout
                 
-                utils.logger.info("="*80)
-                utils.logger.info("请选择能成功扫描的版本使用 ^_^")
                 utils.logger.info("="*80)
                 
                 return  # 成功生成，直接返回
