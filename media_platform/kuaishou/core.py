@@ -98,6 +98,8 @@ class KuaishouCrawler(AbstractCrawler):
                         browser_context=self.browser_context,
                         context_page=self.context_page,
                         cookie_str=config.COOKIES,
+                        enable_concurrent=True,           # 启用并发优化
+                        optimization_level="balanced"     # 使用平衡配置
                     )
                     await login_obj.begin()
                     await self.ks_client.update_cookies(

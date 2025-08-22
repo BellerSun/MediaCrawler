@@ -59,7 +59,7 @@ class OptimizedKuaishouConfig:
             click_element=15000,         # 30秒 -> 15秒
             click_retry_interval=0.5,    # 1秒 -> 0.5秒
             page_load_wait=2,           # 3秒 -> 2秒
-            login_dialog_wait=1.5,      # 2秒 -> 1.5秒
+            login_dialog_wait=5,        # 增加弹窗等待时间到5秒
         )
         
         return config
@@ -110,7 +110,7 @@ class OptimizedKuaishouConfig:
             click_element=12000,
             click_retry_interval=0.2,    # 更短的重试间隔
             page_load_wait=1.5,
-            login_dialog_wait=1,
+            login_dialog_wait=5,         # 增加弹窗等待时间从1秒到5秒
         )
         
         # 优化选择器顺序 - 把最常成功的放在前面
