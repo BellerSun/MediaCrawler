@@ -80,8 +80,21 @@ class KuaishouCrawler(AbstractCrawler):
                         )
                 except Exception as e:
                     utils.logger.error(f"[KuaishouCrawler] 浏览器启动失败: {e}")
-                    utils.logger.info("[KuaishouCrawler] 提示：如果出现 'Target page, context or browser has been closed' 错误，")
-                    utils.logger.info("[KuaishouCrawler] 请运行 'python fix_browser_issue.py' 清理浏览器数据后重试")
+                    
+                    # 检查是否是浏览器相关错误，如果是则尝试自动修复
+                    from utils.browser_fix import BrowserAutoFixer
+                    if BrowserAutoFixer.is_browser_error(str(e)):
+                        utils.logger.info("[KuaishouCrawler] 检测到浏览器问题，尝试自动清理...")
+                        
+                        # 尝试自动修复
+                        if BrowserAutoFixer.auto_fix(verbose=False):
+                            utils.logger.info("[KuaishouCrawler] 自动清理完成，请重新运行程序")
+                        else:
+                            utils.logger.warning("[KuaishouCrawler] 自动清理失败")
+                            utils.logger.info("[KuaishouCrawler] 建议手动运行 'python fix_browser_issue.py' 清理浏览器数据后重试")
+                    else:
+                        utils.logger.info("[KuaishouCrawler] 如遇浏览器问题，请运行 'python fix_browser_issue.py' 清理浏览器数据")
+                    
                     raise
                 
                 # stealth.min.js is a js script to prevent the website from detecting the crawler.

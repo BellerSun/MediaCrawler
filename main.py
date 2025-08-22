@@ -24,6 +24,7 @@ from media_platform.tieba import TieBaCrawler
 from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
 from media_platform.zhihu import ZhihuCrawler
+from utils.browser_fix import BrowserAutoFixer
 
 
 class CrawlerFactory:
@@ -50,6 +51,9 @@ class CrawlerFactory:
 crawler: Optional[AbstractCrawler] = None
 
 
+# auto_fix_browser_issue 功能已移到 utils.browser_fix.BrowserAutoFixer 类中
+
+
 async def main():
     # Init crawler
     global crawler
@@ -73,28 +77,65 @@ async def cleanup():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.get_event_loop().run_until_complete(main())
-    except KeyboardInterrupt:
-        print("程序被用户中断")
-    except Exception as e:
-        error_message = str(e)
-        print(f"程序运行出错: {error_message}")
-        
-        # 提供特定错误的解决方案提示
-        if "Target page, context or browser has been closed" in error_message:
-            print("\n解决方案:")
-            print("1. 运行: python fix_browser_issue.py")
-            print("2. 或者手动清理浏览器数据目录: rm -rf browser_data/ks_user_data_dir")
-            print("3. 然后重新运行程序")
-        elif "browser_context" in error_message and "attribute" in error_message:
-            print("\n解决方案:")
-            print("1. 这可能是浏览器初始化失败导致的")
-            print("2. 运行: python fix_browser_issue.py")
-            print("3. 检查系统资源是否充足（内存、磁盘空间）")
-    finally:
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
         try:
-            asyncio.get_event_loop().run_until_complete(cleanup())
+            asyncio.get_event_loop().run_until_complete(main())
+            break  # 成功执行，退出循环
+            
+        except KeyboardInterrupt:
+            print("程序被用户中断")
+            break
+            
         except Exception as e:
-            print(f"清理资源时出错: {e}")
-        print("进程退出，退出码: -1")
+            error_message = str(e)
+            print(f"程序运行出错: {error_message}")
+            
+            # 检查是否是浏览器相关错误
+            is_browser_error = BrowserAutoFixer.is_browser_error(error_message)
+            
+            if is_browser_error and retry_count < max_retries - 1:
+                print(f"\n🤖 检测到浏览器问题（第 {retry_count + 1} 次失败），正在自动处理...")
+                
+                # 自动清理
+                if BrowserAutoFixer.auto_fix():
+                    retry_count += 1
+                    print(f"\n🔄 准备重试... (尝试 {retry_count + 1}/{max_retries})")
+                    print("⏳ 等待 3 秒后重新启动...")
+                    
+                    # 清理当前爬虫实例
+                    try:
+                        if crawler:
+                            asyncio.get_event_loop().run_until_complete(crawler.close())
+                            crawler = None
+                    except:
+                        pass
+                    
+                    # 等待一下再重试
+                    import time
+                    time.sleep(3)
+                    continue
+                else:
+                    print("❌ 自动清理失败，请手动处理")
+                    break
+            else:
+                # 非浏览器错误或重试次数已达上限
+                if is_browser_error:
+                    print(f"\n❌ 已重试 {max_retries} 次仍然失败")
+                    print("\n📋 手动解决方案:")
+                    print("1. 运行: python fix_browser_issue.py")
+                    print("2. 检查系统资源（内存、磁盘空间）")
+                    print("3. 重启系统后再试")
+                else:
+                    print("\n📋 其他错误，请检查配置和网络连接")
+                break
+                
+        finally:
+            try:
+                asyncio.get_event_loop().run_until_complete(cleanup())
+            except Exception as e:
+                print(f"清理资源时出错: {e}")
+    
+    print("进程退出，退出码: -1") 
